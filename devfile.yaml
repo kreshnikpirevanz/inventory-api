@@ -1,0 +1,26 @@
+# Used by OpenShift Dev Spaces (Lesson 5) to build a ready-to-code workspace.
+schemaVersion: 2.2.0
+metadata:
+  name: inventory-api
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel9:latest   # includes Java 17 + Maven
+      memoryLimit: 3Gi
+      mountSources: true
+      endpoints:
+        - name: http
+          targetPort: 8080
+commands:
+  - id: dev
+    exec:
+      component: tools
+      label: Start Quarkus dev mode (live reload)
+      commandLine: mvn quarkus:dev -Dquarkus.http.host=0.0.0.0
+      workingDir: ${PROJECT_SOURCE}
+  - id: package
+    exec:
+      component: tools
+      label: Build (mvn package)
+      commandLine: mvn package -DskipTests
+      workingDir: ${PROJECT_SOURCE}

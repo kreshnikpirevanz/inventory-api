@@ -1,0 +1,89 @@
+# Build + run on OpenShift. Every object carries backstage.io/kubernetes-id so
+# the Kubernetes and Topology tabs pick it up. Apply with:
+#   oc apply -n poc-apps -f deploy/
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: inventory-api
+  labels:
+    backstage.io/kubernetes-id: inventory-api
+---
+# Source-to-Image build: OpenShift pulls the repo and builds it with its Node.js builder image.
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: inventory-api
+  labels:
+    backstage.io/kubernetes-id: inventory-api
+spec:
+  source:
+    git:
+      uri: https://github.com/kreshnikpirevanz/inventory-api.git
+      ref: main
+  strategy:
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: java:openjdk-17-ubi8          # OpenShift's Java builder (runs Maven)
+  output:
+    to:
+      kind: ImageStreamTag
+      name: inventory-api:latest
+  triggers:
+    - type: ConfigChange
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-api
+  labels:
+    backstage.io/kubernetes-id: inventory-api
+    app.kubernetes.io/part-of: platform-poc
+  annotations:
+    # Roll out automatically when a new image is built
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"inventory-api:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"app\")].image"}]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-api
+  template:
+    metadata:
+      labels:
+        app: inventory-api
+        backstage.io/kubernetes-id: inventory-api
+    spec:
+      containers:
+        - name: app
+          image: inventory-api:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /q/health/ready, port: 8080 }   # Quarkus health endpoint
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-api
+  labels:
+    backstage.io/kubernetes-id: inventory-api
+spec:
+  selector:
+    app: inventory-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: inventory-api
+  labels:
+    backstage.io/kubernetes-id: inventory-api
+spec:
+  to:
+    kind: Service
+    name: inventory-api
+  tls:
+    termination: edge

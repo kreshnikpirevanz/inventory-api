@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: inventory-api
+  description: Inventory service
+  annotations:
+    github.com/project-slug: kreshnikpirevanz/inventory-api
+    backstage.io/source-location: url:https://github.com/kreshnikpirevanz/inventory-api
+    # Golden-path convention: the label on every workload in deploy/ matches this.
+    backstage.io/kubernetes-id: inventory-api
+    backstage.io/kubernetes-namespace: poc-apps
+  tags: [java, quarkus]
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/idp-team
+  system: platform-poc
